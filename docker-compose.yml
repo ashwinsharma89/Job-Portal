@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: job-platform-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/jobplatform.db:/app/jobplatform.db
+      - ./backend/chroma_db:/app/chroma_db
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./jobplatform.db
+      - CHROMA_PERSIST_DIR=./chroma_db
+    # Healthcheck to ensure it's up before frontend traffic? (Optional)
+
+  frontend:
+    build: ./frontend
+    container_name: job-platform-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    # Note: In production, Nginx usually handles API proxying.
+    # We might need to adjust frontend/src/api.ts to point to relative path OR public IP.
+    # For this beta, assuming user visits http://<SERVER_IP> and API is at http://<SERVER_IP>:8000
+
+networks:
+  default:
+    name: job-network

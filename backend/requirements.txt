@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+sqlalchemy
+aiosqlite
+httpx
+python-dotenv
+pydantic
+pydantic-settings
+alembic
+supabase
+python-jobspy
+pandas
+playwright
+fake-useragent
+pypdf
+python-docx
+python-multipart
