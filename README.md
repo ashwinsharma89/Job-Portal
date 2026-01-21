@@ -108,7 +108,7 @@ We have **91 comprehensive tests** with **96% code coverage**!
 cd backend
 
 # Run all tests
-PYTHONPATH=/Users/ashwin/Desktop/Jobs/backend ./venv/bin/pytest tests/ -v
+PYTHONPATH=./backend ./venv/bin/pytest tests/ -v
 
 # Run with coverage
 ./venv/bin/pytest tests/ --cov=managers --cov=services --cov-report=html

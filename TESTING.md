@@ -103,7 +103,7 @@ These features work in production but are skipped in unit tests.
 ### Run All Tests
 ```bash
 cd backend
-PYTHONPATH=/Users/ashwin/Desktop/Jobs/backend ./venv/bin/pytest tests/ -v
+PYTHONPATH=./backend ./venv/bin/pytest tests/ -v
 ```
 
 ### Run with Coverage
