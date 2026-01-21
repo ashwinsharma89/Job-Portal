@@ -70,10 +70,9 @@ class ScraperManager:
         tasks = []
 
         # 1. API Clients (Fast)
-        # 1. API Clients (Fast)
         tasks.append(self._run_wrapper(
-            self.jsearch_client.search_jobs(search_term_with_loc, page=page, num_pages=2, country=country), 
-            "JSearch", 10
+            self.jsearch_client.search_jobs(search_term_with_loc, page=page, num_pages=5, country=country), 
+            "JSearch", 15
         ))
         
         # Remotive (Global/Remote) - Keep it for both but it's international
@@ -85,7 +84,7 @@ class ScraperManager:
         # 2. Adzuna (Reliable but rate-limited)
         # Verify if country is supported by Adzuna (India only in current config)
         if country.lower() not in ["uae", "ae", "united arab emirates"]:
-            for i in range(2):
+            for i in range(3):  # Increased from 2 to 3 iterations
                 tasks.append(self._run_wrapper(
                     self.adzuna_client.search_jobs(query, location, page + i), 
                     f"Adzuna-{i+1}", 20
@@ -95,6 +94,9 @@ class ScraperManager:
         # Priority Scrapers (Higher timeout)
         priority_scrapers = ["Hirist", "Foundit", "Iimjobs", "Naukri", "Indeed"]
         
+        # Scrapers to fetch multiple pages from (to increase volume)
+        multi_page_targets = ["Apna", "Freshersworld", "Hirist", "Indeed", "Foundit", "Iimjobs"]
+
         for name, scraper in self.scrapers.items():
             # Country-Specific Logic
             is_uae = country.lower() in ["uae", "ae", "united arab emirates"]
@@ -110,17 +112,24 @@ class ScraperManager:
 
             timeout = 45 if name in priority_scrapers else 25
             
-            # Safe call handling for country argument
-            if name in ["Indeed", "NaukriGulf", "Bayt", "GulfTalent"]:
-                 tasks.append(self._run_wrapper(
-                    scraper.search_jobs(query, location, page, country=country),
-                    name, timeout
-                ))
-            else:
-                 tasks.append(self._run_wrapper(
-                    scraper.search_jobs(query, location, page),
-                    name, timeout
-                ))
+            # Determine how many pages to scrape
+            num_pages = 2 if name in multi_page_targets else 1
+            
+            for i in range(num_pages):
+                current_page = page + i
+                task_name = f"{name}-Page{current_page}"
+                
+                # Safe call handling for country argument
+                if name in ["Indeed", "NaukriGulf", "Bayt", "GulfTalent"]:
+                     tasks.append(self._run_wrapper(
+                        scraper.search_jobs(query, location, current_page, country=country),
+                        task_name, timeout
+                    ))
+                else:
+                     tasks.append(self._run_wrapper(
+                        scraper.search_jobs(query, location, current_page),
+                        task_name, timeout
+                    ))
 
         # Execute all
         results = await asyncio.gather(*tasks, return_exceptions=True)

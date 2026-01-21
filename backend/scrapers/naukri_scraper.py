@@ -38,29 +38,29 @@ class NaukriScraper(BaseScraper):
             await self._random_delay(1, 2)
 
             # Wait for job cards to appear
-            try:
-                # Browser inspection showed '.cust-job-tuple'
-                await page_obj.wait_for_selector(".cust-job-tuple", timeout=15000)
-            except:
-                title = await page_obj.title()
-                logger.warning(f"NaukriScraper: Job cards selector '.cust-job-tuple' not found. Page title: {title}")
-                # Save a snippet of content for debugging
-                content = await page_obj.content()
-                logger.warning(f"NaukriScraper: Page content snippet: {content[:500]}")
-                
-                try:
-                    await page_obj.wait_for_selector("div[class*='tuple']", timeout=5000)
-                except:
-                    logger.warning("NaukriScraper: Fallback tuple selector also not found.")
-                    return []
-
-            job_cards = await page_obj.query_selector_all(".cust-job-tuple")
-            if not job_cards:
-                job_cards = await page_obj.query_selector_all("div[class*='tuple']")
+            # Wait for job cards to appear
+            selectors = [
+                ".cust-job-tuple",           # New Layout 2024
+                ".srp-jobtuple-wrapper",     # Alternative Layout
+                "article.jobTuple",          # Classics Layout
+                "div[class*='tuple']",       # Generic fallback
+                "div[class*='job-card']"     # Another fallback
+            ]
             
-            # If still not found, try any div with 'job' or 'card' in class
-            if not job_cards:
-                 job_cards = await page_obj.query_selector_all("div[class*='job']")
+            found_selector = None
+            for selector in selectors:
+                try:
+                    await page_obj.wait_for_selector(selector, timeout=5000)
+                    found_selector = selector
+                    break
+                except:
+                    continue
+            
+            if not found_selector:
+                logger.warning(f"NaukriScraper: No known job card selectors found. Page title: {await page_obj.title()}")
+                return []
+
+            job_cards = await page_obj.query_selector_all(found_selector)
             
             logger.info(f"NaukriScraper: Found {len(job_cards)} job cards")
 

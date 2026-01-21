@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Activity, Database, Zap, Search, Clock, Server } from 'lucide-react';
+import { Activity, Database, Zap, Server } from 'lucide-react';
 
 interface DebugMetrics {
     timing: {
@@ -19,7 +19,6 @@ interface DebugMetrics {
     };
 }
 
-// Global Store for Debug Metrics (Simple implementation without external lib)
 export const debugStore = {
     metrics: null as DebugMetrics | null,
     listeners: [] as ((metrics: DebugMetrics | null) => void)[],
@@ -43,89 +42,63 @@ export function DebugConsole() {
         return debugStore.subscribe(setMetrics);
     }, []);
 
-    // if (!metrics) return null; // Logic removed to show "Ready" state
-
     const getStatusColor = (ms: number, threshold: number) =>
-        ms < threshold ? 'text-green-500' : ms < threshold * 2 ? 'text-amber-500' : 'text-red-500';
+        ms < threshold ? 'text-emerald-400' : ms < threshold * 2 ? 'text-amber-400' : 'text-rose-400';
 
     return (
-        <div className={`fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-2xl transition-all duration-300 z-50 ${isOpen ? 'h-64' : 'h-10'}`}>
-            {/* Header / Toggle */}
-            <div
-                className="h-10 flex items-center justify-between px-4 cursor-pointer hover:bg-slate-800"
+        <div className={`fixed bottom-6 right-6 flex flex-col items-end z-50 transition-all duration-300 ${isOpen ? 'w-96' : 'w-auto'}`}>
+            {/* Toggle Button */}
+            <button
                 onClick={() => setIsOpen(!isOpen)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-2xl glass-card border-white/10 shadow-2xl hover:bg-white/10 transition-all ${isOpen ? 'mb-4 border-blue-500/30' : ''}`}
             >
-                <div className="flex items-center gap-4 text-xs font-mono">
-                    <div className="flex items-center gap-1.5 text-blue-400">
-                        <Activity className="w-3.5 h-3.5" />
-                        <span className="font-bold">SYSTEM MONITOR</span>
+                <Activity className={`w-4 h-4 ${metrics ? 'text-emerald-400 animate-pulse' : 'text-blue-400'}`} />
+                <span className="text-[10px] font-bold text-main tracking-widest uppercase">System Stats</span>
+                {metrics && !isOpen && (
+                    <span className={`text-[10px] font-bold ${getStatusColor(metrics.timing.total, 500)} ml-2`}>
+                        {metrics.timing.total}ms
+                    </span>
+                )}
+            </button>
+
+            {/* Expanded Console */}
+            {isOpen && (
+                <div className="w-full glass-card bg-[#12141c]/95 border-white/10 p-5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-5 duration-300 overflow-hidden">
+                    <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-3">
+                        <h4 className="text-[10px] font-bold text-dim uppercase tracking-[0.2em] flex items-center gap-2">
+                            <Server className="w-3 h-3" /> Execution Metrics
+                        </h4>
+                        {metrics?.meta.cache_hit && (
+                            <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">CACHE HIT</span>
+                        )}
                     </div>
 
-                    {metrics ? (
-                        <>
-                            <span className="text-slate-400">|</span>
-                            <span className={`${getStatusColor(metrics.timing.total, 500)} font-bold`}>
-                                {metrics.timing.total}ms
-                            </span>
-                            <span className="text-slate-500">Latency</span>
-
-                            <span className="text-slate-400">|</span>
-                            <div className="flex items-center gap-1">
-                                {metrics.meta.cache_hit ? (
-                                    <span className="px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-bold">CACHE HIT</span>
-                                ) : (
-                                    <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold">FRESH FETCH</span>
-                                )}
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <span className="text-slate-400">|</span>
-                            <span className="text-slate-500 italic">Ready for Search Request...</span>
-                        </>
-                    )}
-                </div>
-
-                <div className="text-slate-500 text-xs">
-                    {isOpen ? 'Minimize' : 'Expand'}
-                </div>
-            </div>
-
-            {/* Content Payload */}
-            {isOpen && (
-                <div className="flex h-full p-4 gap-6 overflow-x-auto pb-12 font-mono text-xs">
                     {!metrics ? (
-                        <div className="flex w-full items-center justify-center text-slate-500 italic">
-                            Run a search to see performance metrics.
-                        </div>
+                        <p className="text-[10px] text-dim italic text-center py-10">Run search to capture metrics...</p>
                     ) : (
-                        <>
+                        <div className="space-y-5">
                             {/* Timing Waterfall */}
-                            <div className="flex-1 min-w-[300px] border-r border-slate-700 pr-6">
-                                <h4 className="text-slate-400 mb-3 uppercase tracking-wider font-bold text-[10px] flex items-center gap-2">
-                                    <Clock className="w-3 h-3" /> Latency Waterfall
-                                </h4>
-                                <div className="space-y-2">
-                                    <MetricRow label="Vector Search" value={metrics.timing.vector_search} total={metrics.timing.total} color="bg-purple-500" icon={<Database className="w-3 h-3" />} />
-                                    <MetricRow label="SQL Query" value={metrics.timing.sql_query} total={metrics.timing.total} color="bg-blue-500" icon={<Server className="w-3 h-3" />} />
-                                    <MetricRow label="Reranking AI" value={metrics.timing.reranking} total={metrics.timing.total} color="bg-pink-500" icon={<Zap className="w-3 h-3" />} />
-                                    <MetricRow label="Total Request" value={metrics.timing.total} total={metrics.timing.total} color="bg-slate-500" />
-                                </div>
+                            <div className="space-y-3">
+                                <MetricRow label="Vector Index" value={metrics.timing.vector_search} total={metrics.timing.total} color="bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]" icon={<Database className="w-3 h-3" />} />
+                                <MetricRow label="Primary DB" value={metrics.timing.sql_query} total={metrics.timing.total} color="bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.3)]" icon={<Server className="w-3 h-3" />} />
+                                <MetricRow label="AI Rerank" value={metrics.timing.reranking} total={metrics.timing.total} color="bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]" icon={<Zap className="w-3 h-3" />} />
                             </div>
 
-                            {/* Logic Stats */}
-                            <div className="flex-1 min-w-[200px]">
-                                <h4 className="text-slate-400 mb-3 uppercase tracking-wider font-bold text-[10px] flex items-center gap-2">
-                                    <Search className="w-3 h-3" /> Search Logic
-                                </h4>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <StatBox label="Vector Hits" value={metrics.meta.vector_hits} sub="Semantic Matches" />
-                                    <StatBox label="SQL Hits" value={metrics.meta.sql_hits} sub="Keyword Matches" />
-                                    <StatBox label="Reranked" value={metrics.meta.reranked_count} sub="Top 50 Processed" />
-                                    <StatBox label="Final Results" value={metrics.meta.final_results} sub="Returned to User" />
+                            {/* Divider */}
+                            <div className="h-px bg-white/5"></div>
+
+                            {/* Quick Stats Grid */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-slate-500/5 p-3 rounded-xl border border-white/5">
+                                    <p className="text-[9px] font-bold text-dim uppercase mb-1">Hits</p>
+                                    <p className="text-lg font-bold text-main">{metrics.meta.vector_hits || 0}</p>
+                                </div>
+                                <div className="bg-slate-500/5 p-3 rounded-xl border border-white/5">
+                                    <p className="text-[9px] font-bold text-dim uppercase mb-1">Latency</p>
+                                    <p className={`text-lg font-bold ${getStatusColor(metrics.timing.total, 500)}`}>{metrics.timing.total}ms</p>
                                 </div>
                             </div>
-                        </>
+                        </div>
                     )}
                 </div>
             )}
@@ -135,26 +108,18 @@ export function DebugConsole() {
 
 function MetricRow({ label, value, total, color, icon }: any) {
     if (value === undefined) return null;
-    const pct = Math.min((value / total) * 100, 100);
+    const pct = Math.max(5, (value / total) * 100);
     return (
-        <div className="group">
-            <div className="flex justify-between mb-1 text-slate-300">
-                <span className="flex items-center gap-2">{icon} {label}</span>
-                <span className="font-bold">{value}ms</span>
+        <div>
+            <div className="flex justify-between items-center mb-1.5">
+                <span className="flex items-center gap-2 text-[10px] font-bold text-dim uppercase tracking-tighter">
+                    {icon} {label}
+                </span>
+                <span className="text-[10px] font-bold text-main">{value}ms</span>
             </div>
-            <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }}></div>
+            <div className="h-1 w-full bg-slate-500/10 rounded-full overflow-hidden">
+                <div className={`h-full ${color} rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }}></div>
             </div>
-        </div>
-    );
-}
-
-function StatBox({ label, value, sub }: any) {
-    return (
-        <div className="bg-slate-800 p-3 rounded-lg border border-slate-700">
-            <div className="text-slate-400 text-[10px] uppercase mb-1">{label}</div>
-            <div className="text-xl font-bold text-white mb-0.5">{value !== undefined ? value : '-'}</div>
-            <div className="text-slate-500 text-[9px]">{sub}</div>
         </div>
     );
 }

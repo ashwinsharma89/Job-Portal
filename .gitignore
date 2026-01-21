@@ -28,6 +28,9 @@ coverage/
 backend/chroma_db/
 backend/data/
 jobplatform.db
+*.db-wal
+*.db-shm
+backend/debug_dumps/
 
 # Logs
 *.log

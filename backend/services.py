@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
-from models import Job, SearchQuery
+from models import Job, SearchQuery, UserInteraction
 from managers.scraper_manager import ScraperManager
 from managers.filter_engine import FilterEngine
 from managers.matching_engine import MatchingEngine
@@ -38,9 +38,38 @@ class JobService:
                  jobs_data = await self.scraper_manager.execute_search(query, location, page, country=country)
                  
                  if jobs_data:
+                     # DEDUPLICATION: Remove duplicates before saving
+                     seen_links = set()
+                     seen_jobs = set()  # (title, company) tuples
+                     unique_jobs = []
+                     
+                     for job_dict in jobs_data:
+                         # Primary dedup: by apply_link
+                         apply_link = job_dict.get("apply_link", "")
+                         if apply_link and apply_link in seen_links:
+                             logger.debug(f"Skipping duplicate job (same link): {job_dict.get('title')} at {job_dict.get('company')}")
+                             continue
+                         
+                         # Secondary dedup: by title + company (for jobs without links or different links to same job)
+                         job_signature = (
+                             job_dict.get("title", "").lower().strip(),
+                             job_dict.get("company", "").lower().strip()
+                         )
+                         if job_signature in seen_jobs:
+                             logger.debug(f"Skipping duplicate job (same title+company): {job_dict.get('title')} at {job_dict.get('company')}")
+                             continue
+                         
+                         # Mark as seen
+                         if apply_link:
+                             seen_links.add(apply_link)
+                         seen_jobs.add(job_signature)
+                         unique_jobs.append(job_dict)
+                     
+                     logger.info(f"Deduplication: {len(jobs_data)} → {len(unique_jobs)} unique jobs ({len(jobs_data) - len(unique_jobs)} duplicates removed)")
+                     
                      # Upsert Logic
                      valid_jobs = []
-                     for job_dict in jobs_data:
+                     for job_dict in unique_jobs:
                          try:
                              # Add extra metadata
                              job_dict["query_hash"] = query_hash
@@ -78,19 +107,22 @@ class JobService:
     async def get_jobs(
         self,
         query: str,
-        location: str = None,
+        locations: list[str] = None,
         page: int = 1,
         experience: list[str] = None, 
         ctc: list[str] = None,
         skills: list[str] = None,
-
         jobPortals: list[str] = None,
         context_id: str = None,
         country: str = "India"
     ):
         search_term = query.strip() or "Job"
-        if location: full_term = f"{search_term} in {location}"
-        else: full_term = search_term
+        # Use first location for scraping search term
+        primary_location = locations[0] if locations and len(locations) > 0 else None
+        if primary_location: 
+            full_term = f"{search_term} in {primary_location}"
+        else: 
+            full_term = search_term
 
         # 1. Check Cache Status
         cache_params = {
@@ -112,7 +144,7 @@ class JobService:
         should_scrape = False
         if not cached_query:
             should_scrape = True
-        elif cached_query.last_fetched < datetime.utcnow() - timedelta(hours=24):
+        elif cached_query.last_fetched < datetime.utcnow() - timedelta(hours=2):  # Changed from 24 to 2 hours
             should_scrape = True
             
         if self.profiler:
@@ -160,34 +192,46 @@ class JobService:
             conditions.append(Job.id.in_(vector_ids))
         
         # Keyword Fallback (SQL LIKE)
-        conditions.append(Job.title.ilike(f"%{search_term}%"))
+        # Split search term into words for better matching
+        # Example: "digital analytics" → matches "Digital Marketing" OR "Analytics Manager"
+        search_words = [word.strip() for word in search_term.split() if len(word.strip()) > 2]
         
-        # Keyword Fallback (SQL LIKE)
-        conditions.append(Job.title.ilike(f"%{search_term}%"))
+        if search_words:
+            # Match if title contains ANY of the search words (OR logic)
+            word_conditions = [Job.title.ilike(f"%{word}%") for word in search_words]
+            conditions.append(or_(*word_conditions))
+        else:
+            # Fallback to exact phrase if no valid words
+            conditions.append(Job.title.ilike(f"%{search_term}%"))
         
 
         
         if conditions:
             # (Matches Vector) OR (Matches Keyword) AND (Matches Country)
-            # Re-structuring: (Vector OR Keyword) AND Country
-            # SQLAlchemy `or_` applies to the list. We need AND for country.
-            
-            # Correct Logic:
-            # WHERE (id IN vector_ids OR title LIKE kw) AND country = val
-            combined_match = or_(
-                Job.id.in_(vector_ids) if vector_ids else False, 
-                Job.title.ilike(f"%{search_term}%")
-            )
+            # IMPORTANT: Vector search is OPTIONAL - keyword search should work standalone
+            # Fixed: Use True as fallback instead of False when no vector_ids
+            combined_match = or_(*conditions)  # Simplified: OR all conditions together
             stmt = stmt.where(combined_match)
             
             # Strict Country Filter
             if country:
                 stmt = stmt.where(Job.country == country)
 
-            # Strict Location Filter (if provided)
+            # Multi-Location Filter (if provided)
             # We use ilike for case-insensitive partial match (e.g. "Bangalore" matches "Bengaluru, Bangalore")
-            if location:
-                stmt = stmt.where(Job.location.ilike(f"%{location}%"))
+            # Match ANY of the selected locations (OR logic)
+            # Special handling for "Delhi NCR" - expand to component cities
+            if locations and len(locations) > 0:
+                location_conditions = []
+                for loc in locations:
+                    if loc == "Delhi NCR":
+                        # Expand Delhi NCR to all component cities
+                        ncr_cities = ["Delhi", "Gurgaon", "Noida", "Faridabad", "Greater Noida", "Manesar", "Ghaziabad"]
+                        for city in ncr_cities:
+                            location_conditions.append(Job.location.ilike(f"%{city}%"))
+                    else:
+                        location_conditions.append(Job.location.ilike(f"%{loc}%"))
+                stmt = stmt.where(or_(*location_conditions))
             
         # 3. Apply Filters (using Engine)
         stmt = self.filter_engine.apply_filters(stmt, experience, ctc, skills, jobPortals)
@@ -202,12 +246,18 @@ class JobService:
             result = await self.db.execute(stmt)
             jobs = result.scalars().all()
         
-        # 4. Trigger Background Scrape if needed (or if DB empty)
-        if should_scrape or len(jobs) < 5:
+        logger.info(f"📊 SQL Query returned {len(jobs)} jobs for '{search_term}' in {country}")
+        
+        # 4. Trigger Background Scrape if needed (or if DB has few results)
+        # Increased threshold from 5 to 50 to ensure we always have fresh, comprehensive results
+        if should_scrape or len(jobs) < 50:
+            logger.info(f"🔄 Triggering background scrape: should_scrape={should_scrape}, current_jobs={len(jobs)}")
             # Fire and forget
             asyncio.create_task(self._scrape_and_save_background(
-                search_term, location, page, query_hash, cache_params, country
+                search_term, primary_location, page, query_hash, cache_params, country
             ))
+        else:
+            logger.info(f"✅ Using cached results: {len(jobs)} jobs found")
         
         # 5. Score & Sort (Relevance Engine)
         user_exp = 0
@@ -308,5 +358,77 @@ class JobService:
         if self.profiler:
             self.profiler.set_meta("final_results", len(scored_jobs))
         
+        # FINAL DEDUPLICATION: Remove any duplicates before returning
+        # This handles cases where duplicates might already exist in the database
+        seen_links = set()
+        seen_jobs = set()
+        unique_results = []
+        
+        for job in scored_jobs:
+            # Primary dedup: by apply_link
+            if job.apply_link and job.apply_link in seen_links:
+                continue
+            
+            # Secondary dedup: by title + company
+            job_signature = (job.title.lower().strip(), job.company.lower().strip())
+            if job_signature in seen_jobs:
+                continue
+            
+            # Mark as seen
+            if job.apply_link:
+                seen_links.add(job.apply_link)
+            seen_jobs.add(job_signature)
+            unique_results.append(job)
+        
+        if len(scored_jobs) != len(unique_results):
+            logger.info(f"Removed {len(scored_jobs) - len(unique_results)} duplicate jobs from results")
+            
+        # --- AUTOMATIC CSV TRACKING ---
+        try:
+            import csv
+            import os
+            from collections import Counter
+            
+            # Count sources
+            source_counts = Counter(j.source for j in unique_results)
+            breakdown_parts = [f"{src}: {cnt}" for src, cnt in sorted(source_counts.items())]
+            breakdown_str = " | ".join(breakdown_parts)
+            
+            # Format Filters
+            filters = []
+            if experience: filters.append(f"Exp: {experience}")
+            if ctc: filters.append(f"CTC: {ctc}")
+            if country and country != "India": filters.append(f"Country: {country}")
+            filter_str = "; ".join(filters) if filters else "None"
+            
+            # Format Location
+            loc_str = ", ".join(locations) if locations else "None"
+            
+            # Prepare Row
+            now = datetime.now()
+            row = [
+                now.strftime("%Y-%m-%d"),
+                now.strftime("%H:%M:%S"),
+                query,
+                loc_str,
+                filter_str,
+                len(unique_results),
+                breakdown_str
+            ]
+            
+            csv_path = "search_history_tracker.csv"
+            file_exists = os.path.isfile(csv_path)
+            
+            with open(csv_path, mode='a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                if not file_exists:
+                    writer.writerow(["Date", "Time", "Query", "Location", "Filters", "Total Results", "Source Breakdown"])
+                writer.writerow(row)
+                
+            logger.info("✅ Logged search to CSV tracker")
+            
+        except Exception as e:
+            logger.error(f"Failed to log to CSV: {e}")
+
         # Return jobs AND whether background scrape was triggered
-        return scored_jobs, should_scrape
+        return unique_results, should_scrape

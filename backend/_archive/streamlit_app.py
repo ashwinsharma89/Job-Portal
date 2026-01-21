@@ -68,7 +68,7 @@ def run_async(coro):
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(coro)
 
-async def search_jobs(query, location, experience_year, ctc_range, skills):
+async def search_jobs(query, location, experience_year, ctc_range, skills, context_id=None):
     async with AsyncSessionLocal() as db:
         vector_manager = VectorManager() # Will use default Chroma settings
         service = JobService(db, vector_manager=vector_manager)
@@ -84,12 +84,59 @@ async def search_jobs(query, location, experience_year, ctc_range, skills):
             experience=exp_filter,
             ctc=ctc_filter,
             skills=skills,
+            context_id=context_id,
             country="India" # Default for now, can make dynamic
         )
         return jobs
 
 # --- Sidebar ---
 st.sidebar.title("🤖 Agent Filters")
+
+# Resume Upload Section
+st.sidebar.subheader("📄 Dynamic Context")
+uploaded_file = st.sidebar.file_uploader("Upload Resume (PDF/DOCX)", type=['pdf', 'docx', 'doc'])
+
+if uploaded_file and "context_id" not in st.session_state:
+    with st.spinner("Analyzing Resume..."):
+        try:
+            # Save temp file
+            import tempfile
+            from utils.resume_parser import ResumeParser
+            
+            # Create a mock upload file object or read content directly
+            # Since ResumeParser expects parsing logic, let's just do it inline or adapt
+            # Streamlit UploadedFile -> bytes
+            bytes_data = uploaded_file.getvalue()
+            
+            # Simple Text Extraction (Inline for Streamlit simplicity)
+            text = ""
+            if uploaded_file.name.endswith(".pdf"):
+                import pypdf
+                pdf = pypdf.PdfReader(uploaded_file)
+                text = "\n".join(page.extract_text() for page in pdf.pages)
+            elif uploaded_file.name.endswith(".docx"):
+                import docx
+                doc = docx.Document(uploaded_file)
+                text = "\n".join(para.text for para in doc.paragraphs)
+            else:
+                text = str(bytes_data, "utf-8")
+                
+            # Embed
+            vm = VectorManager()
+            context_id = vm.create_context_embedding(text)
+            st.session_state["context_id"] = context_id
+            st.sidebar.success("Resume Analyzed! Agent will prioritize matching jobs.")
+            
+        except Exception as e:
+            st.sidebar.error(f"Failed to parse resume: {e}")
+
+if "context_id" in st.session_state:
+    st.sidebar.info(f"Active Context: {st.session_state['context_id'][:8]}...")
+    if st.sidebar.button("Clear Context"):
+        del st.session_state["context_id"]
+        st.rerun()
+
+st.sidebar.markdown("---")
 
 query = st.sidebar.text_input("Job Role", "Python Developer", placeholder="e.g. Data Scientist")
 location = st.sidebar.text_input("City", "Bangalore", placeholder="e.g. Bangalore")
@@ -115,11 +162,15 @@ st.markdown("> **AI-Powered Search Engine** • *Hybrid Vector Search + Autonomo
 if search_btn or query: 
     with st.spinner(f"Agent is searching for '{query}' in '{location}'..."):
         try:
-            results = run_async(search_jobs(query, location, real_exp, real_ctc, skills_list))
+            context_id = st.session_state.get("context_id")
+            jobs, should_scrape = run_async(search_jobs(query, location, real_exp, real_ctc, skills_list, context_id))
             
-            st.success(f"Found {len(results)} relevant jobs.")
+            if should_scrape:
+                st.info("📡 **AI Agent Active**: Searching for more fresh results in background...")
             
-            for job in results:
+            st.success(f"Found {len(jobs)} relevant jobs.")
+            
+            for job in jobs:
                 # Calculate display values
                 salary = f"₹{int(job.ctc_min/100000)}L - ₹{int(job.ctc_max/100000)}L" if job.ctc_min else "Not Disclosed"
                 exp = f"{job.experience_min}-{job.experience_max} Yrs" if job.experience_min is not None else "Entry Level"

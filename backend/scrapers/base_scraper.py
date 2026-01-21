@@ -64,14 +64,14 @@ class BaseScraper:
             "company": raw_job.get("company", "Unknown Company"),
             "location": raw_job.get("location", country), # Default location to country if missing
             "country": country,
-            "experience_min": 0,
-            "experience_max": 0,
-            "ctc_min": None,
-            "ctc_max": None,
-            "skills": [],
-            "posted_at": None,
+            "experience_min": raw_job.get("experience_min", 0),
+            "experience_max": raw_job.get("experience_max", 0),
+            "ctc_min": raw_job.get("ctc_min"),
+            "ctc_max": raw_job.get("ctc_max"),
+            "skills": raw_job.get("skills", []),
+            "posted_at": raw_job.get("posted_at"),
             "apply_link": raw_job.get("apply_link", ""),
             "source": source,
-            "logo_url": None,
+            "logo_url": raw_job.get("logo_url"),
             "description": raw_job.get("description", "")
         }

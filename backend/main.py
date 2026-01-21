@@ -77,6 +77,7 @@ app = FastAPI(title="Job Portal API", version="1.0.0", lifespan=lifespan)
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://localhost:8501", # Streamlit Default Port
 ]
 
 app.add_middleware(
@@ -164,7 +165,7 @@ async def get_jobs(
     response: Response,
     request: Request,
     query: str = Query(..., description="Job title or keyword"),
-    location: Optional[str] = Query(None, description="City or Region"),
+    locations: List[str] = Query(None, description="Locations to filter by (e.g., 'Bangalore', 'Mumbai')"),
     page: int = Query(1, ge=1, description="Page number"),
     experience: List[str] = Query(None, description="Experience ranges (e.g., '0-2 Years')"),
     ctc: List[str] = Query(None, description="CTC ranges (e.g., '0-6 LPA')"),
@@ -178,7 +179,7 @@ async def get_jobs(
     service = JobService(db, vector_manager=vector_manager_instance, profiler=profiler)
     jobs, triggered = await service.get_jobs(
         query=query, 
-        location=location, 
+        locations=locations, 
         page=page,
         experience=experience,
         ctc=ctc,

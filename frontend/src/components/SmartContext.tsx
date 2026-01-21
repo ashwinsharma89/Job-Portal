@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, FileText, X, Loader2, CheckCircle } from 'lucide-react';
+import { Upload, FileText, X, Loader2 } from 'lucide-react';
 import { uploadResume } from '../api';
 
 interface SmartContextProps {
@@ -35,20 +35,21 @@ export function SmartContext({ onContextChange }: SmartContextProps) {
     };
 
     return (
-        <div className="flex flex-col gap-2">
-            {/* Upload Area / Active State */}
+        <div className="w-full">
             {!activeContext ? (
                 <div
-                    className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg cursor-pointer transition-all text-white/90 text-sm"
+                    className="group flex flex-col items-center justify-center p-6 bg-slate-500/5 border border-dashed border-white/10 rounded-2xl hover:border-blue-500/30 hover:bg-slate-500/10 transition-all cursor-pointer"
                     onClick={() => fileInputRef.current?.click()}
                 >
-                    {isUploading ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-200" />
-                    ) : (
-                        <Upload className="w-4 h-4 text-blue-200" />
-                    )}
-                    <span className="hidden sm:inline">Upload Resume for Smart Search</span>
-                    <span className="sm:hidden">Attach Resume</span>
+                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        {isUploading ? (
+                            <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+                        ) : (
+                            <Upload className="w-5 h-5 text-blue-400" />
+                        )}
+                    </div>
+                    <p className="text-xs font-bold text-main mb-1">Upload Resume</p>
+                    <p className="text-[10px] text-dim text-center font-medium">Power your search with AI matching</p>
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -58,17 +59,19 @@ export function SmartContext({ onContextChange }: SmartContextProps) {
                     />
                 </div>
             ) : (
-                <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-100 text-sm animate-fade-in-up">
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        <FileText className="w-4 h-4 shrink-0 text-emerald-400" />
-                        <span className="truncate font-medium">{activeContext.name}</span>
-                        <span className="text-emerald-500/70 text-xs whitespace-nowrap hidden sm:inline">• Context Active</span>
+                <div className="p-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-main truncate">{activeContext.name}</p>
+                        <p className="text-[10px] text-blue-400/70 font-bold uppercase tracking-widest">Active Search Context</p>
                     </div>
                     <button
                         onClick={clearContext}
-                        className="p-1 hover:bg-emerald-500/20 rounded-full transition-colors"
+                        className="p-1.5 hover:bg-slate-500/10 rounded-full transition-colors text-dim hover:text-main"
                     >
-                        <X className="w-3.5 h-3.5 text-emerald-400" />
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
             )}

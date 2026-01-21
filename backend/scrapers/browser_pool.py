@@ -28,7 +28,7 @@ class BrowserPool:
         self.playwright: Optional[Playwright] = None
         self.browser: Optional[Browser] = None
         self.ua = UserAgent()
-        self._semaphore = asyncio.Semaphore(3)  # Max 3 concurrent browser contexts
+        self._semaphore = asyncio.Semaphore(8)  # Increased from 3 to 8 for higher concurrency
         self._active_contexts = 0
         
     async def initialize(self):

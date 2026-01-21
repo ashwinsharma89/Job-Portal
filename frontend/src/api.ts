@@ -5,9 +5,9 @@ import { scrapeStore } from './components/SearchStatus';
 // In development (Vite), it uses the proxy in vite.config.ts or defaults to localhost
 // In production (Docker/Nginx), it should use relative path '/api' which Nginx proxies
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
-const API_URL = `${BASE_URL}/jobs`;
-const UPLOAD_URL = `${BASE_URL}/upload_resume`;
-const FEEDBACK_URL = `${BASE_URL}/feedback`;
+const JOBS_ENDPOINT = `${BASE_URL}/jobs`;
+const UPLOAD_ENDPOINT = `${BASE_URL}/context/upload`;
+const FEEDBACK_ENDPOINT = `${BASE_URL}/feedback`;
 
 export interface Job {
     id: number;
@@ -29,21 +29,20 @@ export interface Job {
 
 export const fetchJobs = async (
     query: string,
-    location?: string,
-    page: number = 1,
     filters?: {
         experience: string[];
         ctc: string[];
         skills: string[];
         jobPortals: string[];
+        locations: string[];
     },
     contextId?: string,
-    country: string = "India"
+    country: string = "India",
+    page: number = 1
 ): Promise<Job[]> => {
     const params = new URLSearchParams();
     params.append('query', query);
     params.append('country', country);
-    if (location) params.append('location', location);
     if (contextId) params.append('context_id', contextId);
     params.append('page', page.toString());
 
@@ -52,11 +51,12 @@ export const fetchJobs = async (
         filters.ctc.forEach(ctc => params.append('ctc', ctc));
         filters.skills.forEach(skill => params.append('skills', skill));
         filters.jobPortals.forEach(portal => params.append('jobPortals', portal));
+        filters.locations.forEach(loc => params.append('locations', loc));
     }
 
 
 
-    const response = await axios.get<Job[]>(`${API_URL}/jobs`, { params, timeout: 30000 });
+    const response = await axios.get<Job[]>(JOBS_ENDPOINT, { params, timeout: 30000 });
 
     // Capture Debug Info (Axios lowercases headers)
     const debugInfo = response.headers['x-debug-info'];
@@ -86,7 +86,7 @@ export const uploadResume = async (file: File): Promise<{ context_id: string, fi
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await axios.post(`${API_URL}/context/upload`, formData, {
+    const response = await axios.post(UPLOAD_ENDPOINT, formData, {
         headers: {
             'Content-Type': 'multipart/form-data'
         }
@@ -96,7 +96,7 @@ export const uploadResume = async (file: File): Promise<{ context_id: string, fi
 
 export const sendFeedback = async (jobId: number, actionType: 'CLICK' | 'APPLY' | 'DISMISS', contextId?: string) => {
     try {
-        await axios.post(`${API_URL}/feedback`, {
+        await axios.post(FEEDBACK_ENDPOINT, {
             job_id: jobId,
             action_type: actionType,
             context_id: contextId

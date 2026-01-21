@@ -2,31 +2,54 @@ version: '3.8'
 
 services:
   backend:
-    build: ./backend
-    container_name: job-platform-backend
-    restart: always
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: job-portal-backend
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend/jobplatform.db:/app/jobplatform.db
-      - ./backend/chroma_db:/app/chroma_db
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///./jobplatform.db
-      - CHROMA_PERSIST_DIR=./chroma_db
-    # Healthcheck to ensure it's up before frontend traffic? (Optional)
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=sqlite:///data/jobs.db
+      - RAPIDAPI_KEY=${RAPIDAPI_KEY}
+      - RAPIDAPI_HOST=${RAPIDAPI_HOST}
+      - ADZUNA_APP_ID=${ADZUNA_APP_ID}
+      - ADZUNA_APP_KEY=${ADZUNA_APP_KEY}
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/chroma_db:/app/chroma_db
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - job-portal-network
 
   frontend:
-    build: ./frontend
-    container_name: job-platform-frontend
-    restart: always
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: job-portal-frontend
     ports:
       - "80:80"
     depends_on:
       - backend
-    # Note: In production, Nginx usually handles API proxying.
-    # We might need to adjust frontend/src/api.ts to point to relative path OR public IP.
-    # For this beta, assuming user visits http://<SERVER_IP> and API is at http://<SERVER_IP>:8000
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - job-portal-network
 
 networks:
-  default:
-    name: job-network
+  job-portal-network:
+    driver: bridge
+
+volumes:
+  backend-data:
+  chroma-data:

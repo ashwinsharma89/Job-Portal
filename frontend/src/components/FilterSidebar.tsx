@@ -1,5 +1,5 @@
-// FilterSidebar component
-import { Filter, X } from 'lucide-react';
+import { X, ChevronDown, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 
 interface FilterSidebarProps {
     filters: {
@@ -27,91 +27,71 @@ export function FilterSidebar({ filters, selectedFilters, onFilterChange, classN
         selectedFilters.jobPortals.length > 0;
 
     return (
-        <div className={className}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                    <Filter className="w-5 h-5 text-blue-600" />
-                    <h3 className="font-semibold text-slate-900">Refine Your Search</h3>
-                </div>
-                {hasActiveFilters && (
-                    <button
-                        onClick={() => {
-                            filters.experience.forEach(exp => {
-                                if (selectedFilters.experience.includes(exp)) {
-                                    onFilterChange('experience', exp);
-                                }
-                            });
-                            filters.ctc.forEach(ctc => {
-                                if (selectedFilters.ctc.includes(ctc)) {
-                                    onFilterChange('ctc', ctc);
-                                }
-                            });
-                            filters.skills.forEach(skill => {
-                                if (selectedFilters.skills.includes(skill)) {
-                                    onFilterChange('skills', skill);
-                                }
-                            });
-                            filters.jobPortals.forEach(portal => {
-                                if (selectedFilters.jobPortals.includes(portal)) {
-                                    onFilterChange('jobPortals', portal);
-                                }
-                            });
-                        }}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                    >
-                        <X className="w-4 h-4" />
-                        Clear All
-                    </button>
-                )}
+        <div className={`space-y-4 ${className}`}>
+            {/* Country Selector - Modern Pill Toggle */}
+            <div className="bg-slate-500/5 p-1 rounded-xl border border-white/5 flex gap-1">
+                <button
+                    onClick={() => onFilterChange('country', 'India')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${selectedFilters.country === 'India' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-dim hover:text-main'}`}
+                >
+                    🇮🇳 India
+                </button>
+                <button
+                    onClick={() => onFilterChange('country', 'UAE')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${selectedFilters.country === 'UAE' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-dim hover:text-main'}`}
+                >
+                    🇦🇪 UAE
+                </button>
             </div>
 
-            {/* Horizontal Filter Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Country Toggle */}
-                <div className="relative">
-                    <select
-                        className="w-full h-[42px] px-4 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer"
-                        value={selectedFilters.country}
-                        onChange={(e) => onFilterChange('country', e.target.value)}
-                    >
-                        <option value="India">🇮🇳 India</option>
-                        <option value="UAE">🇦🇪 UAE (Dubai/Gulf)</option>
-                    </select>
-                </div>
+            <DropdownFilter
+                label="Experience"
+                options={filters.experience}
+                selected={selectedFilters.experience}
+                onChange={(val) => onFilterChange('experience', val)}
+            />
+            <DropdownFilter
+                label="Salary Range"
+                options={filters.ctc}
+                selected={selectedFilters.ctc}
+                onChange={(val) => onFilterChange('ctc', val)}
+            />
+            <DropdownFilter
+                label="Key Skills"
+                options={filters.skills}
+                selected={selectedFilters.skills}
+                onChange={(val) => onFilterChange('skills', val)}
+            />
+            <DropdownFilter
+                label="Job Portals"
+                options={filters.jobPortals}
+                selected={selectedFilters.jobPortals}
+                onChange={(val) => onFilterChange('jobPortals', val)}
+            />
 
-                <DropdownFilter
-                    label="Experience Level"
-                    options={filters.experience}
-                    selected={selectedFilters.experience}
-                    onChange={(val) => onFilterChange('experience', val)}
-                />
-                <DropdownFilter
-                    label="Salary Range"
-                    options={filters.ctc}
-                    selected={selectedFilters.ctc}
-                    onChange={(val) => onFilterChange('ctc', val)}
-                />
-                <DropdownFilter
-                    label="Skills"
-                    options={filters.skills}
-                    selected={selectedFilters.skills}
-                    onChange={(val) => onFilterChange('skills', val)}
-                />
-                <DropdownFilter
-                    label="Job Portals"
-                    options={filters.jobPortals}
-                    selected={selectedFilters.jobPortals}
-                    onChange={(val) => onFilterChange('jobPortals', val)}
-                />
-            </div>
+            {hasActiveFilters && (
+                <button
+                    onClick={() => {
+                        // Reset logic handled in parent usually, or we can send reset signal
+                        // For now we just trigger changes back to empty
+                        Object.keys(filters).forEach(cat => {
+                            const category = cat as keyof typeof filters;
+                            filters[category].forEach(opt => {
+                                if (selectedFilters[category].includes(opt)) {
+                                    onFilterChange(category, opt);
+                                }
+                            });
+                        });
+                    }}
+                    className="w-full py-2.5 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/5 rounded-lg border border-red-500/10 transition-all flex items-center justify-center gap-2"
+                >
+                    <X className="w-3.5 h-3.5" />
+                    Reset All Filters
+                </button>
+            )}
         </div>
     );
 }
-
-// Reusable Dropdown Component
-import { ChevronDown } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
 
 function DropdownFilter({ label, options, selected, onChange }: {
     label: string,
@@ -122,7 +102,6 @@ function DropdownFilter({ label, options, selected, onChange }: {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Close on click outside
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -133,39 +112,42 @@ function DropdownFilter({ label, options, selected, onChange }: {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const activeCount = selected.length;
+
     return (
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full flex items-center justify-between px-4 py-2.5 bg-white border rounded-xl text-sm font-medium transition-all duration-200 ${selected.length > 0
-                    ? 'border-blue-500 text-blue-700 bg-blue-50/50 ring-1 ring-blue-500/20'
-                    : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${isOpen || activeCount > 0
+                    ? 'bg-blue-600/10 border-blue-500/30 text-blue-400'
+                    : 'bg-slate-500/5 border-white/5 text-dim hover:bg-slate-500/10 hover:text-main'
+                    } border`}
             >
-                <span className="truncate">
-                    {selected.length > 0 ? `${label} (${selected.length})` : label}
-                </span>
-                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                <div className="flex items-center gap-2">
+                    {activeCount > 0 && (
+                        <span className="w-5 h-5 bg-blue-600 text-white rounded-full text-[10px] flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            {activeCount}
+                        </span>
+                    )}
+                    <span className="truncate">{label}</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Dropdown Menu */}
             {isOpen && (
-                <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100 p-2">
+                <div className="absolute z-20 w-full mt-2 glass-card bg-[#1a1c26]/95 border border-white/10 shadow-2xl p-2 max-h-64 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95">
                     <div className="space-y-1">
                         {options.map((option) => (
                             <label
                                 key={option}
-                                className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors group"
+                                className={`flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-all group ${selected.includes(option) ? 'bg-blue-600/20 text-blue-100' : 'text-dim hover:bg-slate-500/5 hover:text-main'}`}
                             >
-                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selected.includes(option)
+                                <span className="text-xs font-medium">{option}</span>
+                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selected.includes(option)
                                     ? 'bg-blue-600 border-blue-600'
-                                    : 'border-slate-300 group-hover:border-blue-400'
+                                    : 'border-white/10 group-hover:border-white/30'
                                     }`}>
-                                    {selected.includes(option) && (
-                                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    )}
+                                    {selected.includes(option) && <Check className="w-3 h-3 text-white" />}
                                 </div>
                                 <input
                                     type="checkbox"
@@ -173,10 +155,6 @@ function DropdownFilter({ label, options, selected, onChange }: {
                                     checked={selected.includes(option)}
                                     onChange={() => onChange(option)}
                                 />
-                                <span className={`text-sm ${selected.includes(option) ? 'text-blue-700 font-medium' : 'text-slate-600'
-                                    }`}>
-                                    {option}
-                                </span>
                             </label>
                         ))}
                     </div>
