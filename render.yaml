@@ -11,13 +11,13 @@ services:
       - key: DATABASE_URL
         value: sqlite+aiosqlite:///app/data/jobs.db
       - key: RAPIDAPI_KEY
-        fromContext: RAPIDAPI_KEY
+        sync: false
       - key: RAPIDAPI_HOST
         value: jsearch.p.rapidapi.com
       - key: ADZUNA_APP_ID
-        fromContext: ADZUNA_APP_ID
+        sync: false
       - key: ADZUNA_APP_KEY
-        fromContext: ADZUNA_APP_KEY
+        sync: false
       - key: PORT
         value: "8000"
     healthCheckPath: /
