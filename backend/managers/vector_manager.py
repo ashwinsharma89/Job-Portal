@@ -12,6 +12,14 @@ class VectorManager:
     def __init__(self, persist_path: str = "./chroma_db"):
         self.persist_path = persist_path
         
+        # Deadlock Prevention for macOS/Uvicorn
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+        try:
+            import torch
+            torch.set_num_threads(1)
+        except ImportError:
+            pass
+        
         # Initialize ChromaDB Client
         chroma_host = os.getenv("CHROMA_SERVER_HOST")
         chroma_port = os.getenv("CHROMA_SERVER_PORT")

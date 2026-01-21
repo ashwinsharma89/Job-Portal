@@ -77,7 +77,10 @@ app = FastAPI(title="Job Portal API", version="1.0.0", lifespan=lifespan)
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
-    "http://localhost:8501", # Streamlit Default Port
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:8501", 
+    "*"  # Allow all for development/sharing
 ]
 
 app.add_middleware(
@@ -193,3 +196,7 @@ async def get_jobs(
         response.headers["X-Background-Scrape"] = "true"
         
     return jobs
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

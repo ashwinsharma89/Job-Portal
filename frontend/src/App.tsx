@@ -27,7 +27,8 @@ function App() {
 
   // Search State for pagination
   const [currentQuery, setCurrentQuery] = useState('');
-  const [currentLocations, setCurrentLocations] = useState<string[]>([]);
+  // const [currentLocations, setCurrentLocations] = useState<string[]>([]); // Unused
+
   const [currentContextId, setCurrentContextId] = useState<string | undefined>(undefined);
 
   // Theme State
@@ -55,7 +56,7 @@ function App() {
     setError('');
     setCurrentPage(1); // Reset to first page on new search
     setCurrentQuery(query);
-    setCurrentLocations(locations);  // Store locations in state
+    // setCurrentLocations(locations);  // Store locations in state
 
     // Auto-detect country from selected locations
     let targetCountry = filtersOverride?.country || selectedFilters.country;

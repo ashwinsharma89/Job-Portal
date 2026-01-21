@@ -8,11 +8,12 @@ Since your app uses **Playwright** (headless browser) and a **Local Database**, 
 **Best for**: Showing friends right now.
 **Requirement**: Your laptop must stay ON and connected to the internet.
 
-1.  **Ensure Streamlit is running** on your mac (Port 8501).
+1.  **Ensure Streamlit/React is running** (Port 8501 or 5173).
 2.  Open a **new terminal** window/tab.
 3.  Run this command:
     ```bash
-    npx localtunnel --port 8501
+    npx localtunnel --port 5173 
+    # Or 8501 if using Streamlit
     ```
 4.  It will give you a URL like `https://salty-dog-42.localtunnel.me`.
 5.  **Send this URL to your friends!**
@@ -41,12 +42,11 @@ Since your app uses **Playwright** (headless browser) and a **Local Database**, 
 ## 🐳 Docker Local Testing (Advanced)
 If you want to verify the Docker build locally before deploying:
 
-1.  **Build**:
+1.  **Ensure Docker Desktop is Running**.
+2.  **Build & Run**:
     ```bash
-    docker build -t job-portal . -f frontend/Dockerfile
-    # Note: You have two Dockerfiles. You might need a merged one for single-container deployment.
-    # Currently, your setup separates Backend and Frontend.
-    # For Render, you typically deploy the BACKEND and FRONTEND as two separate services, or use a "Monolith" Dockerfile (advanced).
+    docker-compose up --build
     ```
-
-**Recommendation**: Stick to **Option 1 (Localtunnel)** for today!
+3.  **Access**:
+    *   Frontend: http://localhost
+    *   Backend: http://localhost:8000

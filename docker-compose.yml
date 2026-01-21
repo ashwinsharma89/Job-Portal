@@ -10,7 +10,7 @@ services:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
-      - DATABASE_URL=sqlite:///data/jobs.db
+      - DATABASE_URL=sqlite+aiosqlite:///data/jobs.db
       - RAPIDAPI_KEY=${RAPIDAPI_KEY}
       - RAPIDAPI_HOST=${RAPIDAPI_HOST}
       - ADZUNA_APP_ID=${ADZUNA_APP_ID}
@@ -35,6 +35,9 @@ services:
     container_name: job-portal-frontend
     ports:
       - "80:80"
+    environment:
+      - BACKEND_HOST=backend
+      - BACKEND_PORT=8000
     depends_on:
       - backend
     restart: unless-stopped

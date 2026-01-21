@@ -68,13 +68,13 @@ export function JobCard({ job, className = '', contextId }: JobCardProps) {
                     <MapPin className="w-3.5 h-3.5 text-blue-500" />
                     <span className="text-xs font-semibold text-main truncate">{job.location || 'Remote'}</span>
                 </div>
-                {(job.experience_min > 0 || job.experience_max > 0) && (
+                {(job.experience_min !== undefined || job.experience_max !== undefined) && (
                     <div className="flex items-center gap-2 bg-slate-500/5 px-3 py-2 rounded-xl border border-white/5">
                         <Briefcase className="w-3.5 h-3.5 text-indigo-500" />
-                        <span className="text-xs font-semibold text-main truncate">{job.experience_min || 0}+{job.experience_max || 0} Yrs</span>
+                        <span className="text-xs font-semibold text-main truncate">{job.experience_min ?? 0}+{job.experience_max ?? 0} Yrs</span>
                     </div>
                 )}
-                <div className={`flex items-center gap-2 bg-slate-500/5 px-3 py-2 rounded-xl border border-white/5 ${(job.experience_min > 0 || job.experience_max > 0) ? '' : 'col-span-2'}`}>
+                <div className={`flex items-center gap-2 bg-slate-500/5 px-3 py-2 rounded-xl border border-white/5 ${(job.experience_min !== undefined || job.experience_max !== undefined) ? '' : 'col-span-2'}`}>
                     <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
                     <span className="text-xs font-bold text-main">
                         {job.ctc_min ? `₹${(job.ctc_min / 100000).toFixed(1)}L - ₹${(job.ctc_max! / 100000).toFixed(1)}L` : 'Salary Undisclosed'}

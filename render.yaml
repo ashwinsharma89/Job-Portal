@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: jobs-backend
+    env: docker
+    dockerContext: backend
+    dockerfilePath: Dockerfile
+    plan: starter
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:////app/data/jobs.db
+      - key: RAPIDAPI_KEY
+        fromContext: RAPIDAPI_KEY
+      - key: RAPIDAPI_HOST
+        value: jsearch.p.rapidapi.com
+      - key: ADZUNA_APP_ID
+        fromContext: ADZUNA_APP_ID
+      - key: ADZUNA_APP_KEY
+        fromContext: ADZUNA_APP_KEY
+      - key: PORT
+        value: "8000"
+    volumes:
+      - type: persistent
+        name: jobs-data
+        mountPath: /app/data
+        sizeGB: 1
+    healthCheckPath: /
+
+  - type: web
+    name: jobs-frontend
+    env: docker
+    dockerContext: frontend
+    dockerfilePath: Dockerfile
+    plan: free
+    envVars:
+      - key: BACKEND_HOST
+        value: jobs-backend
+      - key: BACKEND_PORT
+        value: "8000"
+    healthCheckPath: /
