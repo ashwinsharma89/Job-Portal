@@ -4,12 +4,12 @@ services:
     env: docker
     dockerContext: backend
     dockerfilePath: Dockerfile
-    plan: starter
+    plan: free
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:////app/data/jobs.db
+        value: sqlite+aiosqlite:///app/data/jobs.db
       - key: RAPIDAPI_KEY
         fromContext: RAPIDAPI_KEY
       - key: RAPIDAPI_HOST
@@ -20,11 +20,6 @@ services:
         fromContext: ADZUNA_APP_KEY
       - key: PORT
         value: "8000"
-    volumes:
-      - type: persistent
-        name: jobs-data
-        mountPath: /app/data
-        sizeGB: 1
     healthCheckPath: /
 
   - type: web
@@ -38,4 +33,3 @@ services:
         value: jobs-backend
       - key: BACKEND_PORT
         value: "8000"
-    healthCheckPath: /
