@@ -174,3 +174,5 @@ Started Hirist scrape for https://www.hirist.tech/k/ai-lead-jobs at 2026-01-21 1
 Started Hirist scrape for https://www.hirist.tech/k/ai-lead-jobs at 2026-01-21 16:07:22.186379
 Started Hirist scrape for https://www.hirist.tech/k/data-science-jobs at 2026-01-21 16:09:14.656459
 Started Hirist scrape for https://www.hirist.tech/k/data-science-jobs at 2026-01-21 16:09:14.659478
+Started Hirist scrape for https://www.hirist.tech/k/data-analyst-jobs at 2026-01-21 16:13:16.193170
+Started Hirist scrape for https://www.hirist.tech/k/data-analyst-jobs at 2026-01-21 16:13:16.196164
